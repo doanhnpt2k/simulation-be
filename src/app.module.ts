@@ -7,11 +7,22 @@ import jwtConfig from './config/jwt.config';
 import { UserEntity } from './modules/user/user.entity';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
+import { MbtiModule } from './modules/mbti/mbti.module';
+import { QuestionEntity } from './modules/mbti/entities/question.entity';
+import { MbtiTestEntity } from './modules/mbti/entities/mbti-test.entity';
+import { MbtiAnswerEntity } from './modules/mbti/entities/mbti-answer.entity';
+import { MbtiResultEntity } from './modules/mbti/entities/mbti-result.entity';
 import { ResponseInterceptor } from './utils/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './utils/filters/http-exception.filter';
 
-const apiModule = [UserModule, AuthModule];
-const entities = [UserEntity];
+const apiModule = [UserModule, AuthModule, MbtiModule];
+const entities = [
+  UserEntity,
+  QuestionEntity,
+  MbtiTestEntity,
+  MbtiAnswerEntity,
+  MbtiResultEntity,
+];
 @Module({
   imports: [
     ConfigModule.forRoot({

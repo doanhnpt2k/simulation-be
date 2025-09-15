@@ -15,6 +15,9 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UserService } from '../user/user.service';
 import { UserStatus } from '../user/user.type';
+import type { JwtPayload } from './interfaces/jwt-payload.interface';
+import { MbtiTypeEntity } from '../mbti/entities/mbti-type.entity';
+import { MbtiResultEntity } from '../mbti/entities/mbti-result.entity';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +25,10 @@ export class AuthService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
+    @InjectRepository(MbtiTypeEntity)
+    private readonly mbtiTypeRepository: Repository<MbtiTypeEntity>,
+    @InjectRepository(MbtiResultEntity)
+    private readonly mbtiResultRepository: Repository<MbtiResultEntity>,
     @Inject(JwtService) private readonly jwtService: JwtService,
     @Inject(UserService) private readonly userService: UserService,
   ) {}
@@ -78,7 +85,7 @@ export class AuthService {
           email: user.email,
           type: 'access',
         },
-        { expiresIn: '15m' },
+        { expiresIn: '7d' },
       );
 
       const refreshToken = await this.jwtService.signAsync(
@@ -105,6 +112,16 @@ export class AuthService {
     try {
       const user = await this.userRepo.findOne({ where: { id: userId } });
       if (!user) throw new BadRequestException('User not found');
+      const mbtiType = user.mbtiTypeId
+        ? await this.mbtiTypeRepository.findOne({
+            where: { id: user.mbtiTypeId },
+          })
+        : null;
+      const lastResult = await this.mbtiResultRepository.findOne({
+        where: { userId: user.id },
+        order: { createdAt: 'DESC' },
+      });
+      console.log(lastResult);
 
       return {
         id: user.id,
@@ -115,6 +132,33 @@ export class AuthService {
         lastLoginAt: user.lastLoginAt,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
+        lastMbtiTestAt: user.lastMbtiTestAt,
+        mbtiType: mbtiType,
+        lastResult: lastResult
+          ? {
+              scores: {
+                E: lastResult.eScore,
+                I: lastResult.iScore,
+                S: lastResult.sScore,
+                N: lastResult.nScore,
+                T: lastResult.tScore,
+                F: lastResult.fScore,
+                J: lastResult.jScore,
+                P: lastResult.pScore,
+              },
+              percentages: {
+                E: lastResult.ePercentage,
+                I: lastResult.iPercentage,
+                S: lastResult.sPercentage,
+                N: lastResult.nPercentage,
+                T: lastResult.tPercentage,
+                F: lastResult.fPercentage,
+                J: lastResult.jPercentage,
+                P: lastResult.pPercentage,
+              },
+              createdAt: lastResult.createdAt,
+            }
+          : null,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -126,7 +170,10 @@ export class AuthService {
   async refreshToken(payload: RefreshTokenDto) {
     try {
       // Verify refresh token
-      const decoded = await this.jwtService.verifyAsync(payload.refreshToken);
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      const decoded = (await this.jwtService.verifyAsync(
+        payload.refreshToken,
+      )) as JwtPayload;
 
       if (decoded.type !== 'refresh') {
         throw new UnauthorizedException('Invalid token type');
@@ -152,7 +199,9 @@ export class AuthService {
           email: user.email,
           type: 'access',
         },
-        { expiresIn: '15m' },
+        {
+          expiresIn: '7d',
+        },
       );
 
       return { accessToken: newAccessToken };

@@ -37,4 +37,11 @@ export class UserEntity {
 
   @Column({ type: 'varchar', name: 'status', default: UserStatus.ACTIVE })
   status: UserStatus;
+
+  @Column({ type: 'timestamptz', name: 'last_mbti_test_at', nullable: true })
+  lastMbtiTestAt?: Date;
+
+  // Quan hệ tới bảng mbti_types (normalized type)
+  @Column({ type: 'uuid', name: 'mbti_type_id', nullable: true })
+  mbtiTypeId?: string | null;
 }

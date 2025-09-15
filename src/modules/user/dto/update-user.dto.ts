@@ -1,21 +1,22 @@
-import { Optional } from '@nestjs/common';
-import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
-import { UserStatus } from '../user.type';
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateUserDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
+  @ApiProperty({ example: 'user@example.com' })
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
+  @ApiProperty({ example: 'secret123' })
   @IsNotEmpty()
   @IsString()
-  @MinLength(8)
+  @MinLength(6)
+  @MaxLength(128)
   password: string;
-
-  @Optional()
-  status: UserStatus;
 }

@@ -10,6 +10,7 @@ import { UserEntity } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -18,6 +19,14 @@ export class UserService {
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
   ) {}
+
+  private readonly crypto: {
+    hash: (data: string, saltOrRounds: string | number) => Promise<string>;
+    compare: (data: string, encrypted: string) => Promise<boolean>;
+  } = bcrypt as unknown as {
+    hash: (data: string, saltOrRounds: string | number) => Promise<string>;
+    compare: (data: string, encrypted: string) => Promise<boolean>;
+  };
   async findOneById(id: string) {
     try {
       const user = await this.userRepository.findOne({ where: { id } });

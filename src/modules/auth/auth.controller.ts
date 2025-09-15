@@ -15,7 +15,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from '../../utils/guards/jwt.guard';
 
-@ApiTags('auth')
+@ApiTags('Auth')
 @Controller('/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

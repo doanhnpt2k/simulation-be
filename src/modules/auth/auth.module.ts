@@ -8,12 +8,14 @@ import { JwtConfig } from '../../config/jwt.config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategy/jwt.strategy';
+import { MbtiTypeEntity } from '../mbti/entities/mbti-type.entity';
+import { MbtiResultEntity } from '../mbti/entities/mbti-result.entity';
 
 @Module({
   imports: [
     ConfigModule,
     UserModule,
-    TypeOrmModule.forFeature([UserEntity]),
+    TypeOrmModule.forFeature([UserEntity, MbtiTypeEntity, MbtiResultEntity]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -19,7 +19,7 @@ import { Roles } from './role.decorator';
 import { RolesGuard, AuthGuard } from '../guards';
 import { UserRole } from '@/modules/user/user.type';
 
-export function Auth(roles: UserRole[] = []): MethodDecorator {
+export function Auth(roles: UserRole[] = []): ClassDecorator & MethodDecorator {
   return applyDecorators(
     Roles(roles),
     UseGuards(AuthGuard(), RolesGuard),
@@ -29,20 +29,9 @@ export function Auth(roles: UserRole[] = []): MethodDecorator {
   );
 }
 
-export function AuthAdmin(): MethodDecorator {
+export function AuthAdmin(): ClassDecorator & MethodDecorator {
   return applyDecorators(
     Roles([UserRole.ADMIN]),
-    UseGuards(AuthGuard(), RolesGuard),
-    ApiBearerAuth(),
-    // UseInterceptors(AuthUserInterceptor),
-    ApiUnauthorizedResponse({ description: 'Unauthorized' }),
-  );
-}
-
-export function AuthCRM(): MethodDecorator {
-  const roles = [UserRole.ADMIN];
-  return applyDecorators(
-    Roles(roles),
     UseGuards(AuthGuard(), RolesGuard),
     ApiBearerAuth(),
     // UseInterceptors(AuthUserInterceptor),
