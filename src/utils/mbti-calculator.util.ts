@@ -10,6 +10,8 @@ export interface MbtiScores {
   F: number;
   J: number;
   P: number;
+  _A: number;
+  _T: number;
 }
 
 export interface MbtiPercentages {
@@ -21,6 +23,8 @@ export interface MbtiPercentages {
   F: number;
   J: number;
   P: number;
+  _A: number;
+  _T: number;
 }
 
 export interface MbtiCalculationResult {
@@ -42,6 +46,8 @@ export class MbtiCalculator {
       F: 0,
       J: 0,
       P: 0,
+      _A: 0,
+      _T: 0,
     };
 
     // Tính điểm cho từng câu trả lời (-3..3)
@@ -65,6 +71,10 @@ export class MbtiCalculator {
         case MbtiCategory.J_P:
           if (score >= 0) scores.J += score;
           else scores.P += -score;
+          break;
+        case MbtiCategory.A_T:
+          if (score >= 0) scores._A += score;
+          else scores._T += -score;
           break;
       }
     });
@@ -92,6 +102,8 @@ export class MbtiCalculator {
       F: 0,
       J: 0,
       P: 0,
+      _A: 0,
+      _T: 0,
     };
 
     // Tổng độ lớn từng cặp (đều không âm)
@@ -99,6 +111,7 @@ export class MbtiCalculator {
     const sTotal = scores.S + scores.N;
     const tTotal = scores.T + scores.F;
     const jTotal = scores.J + scores.P;
+    const aTotal = scores._A + scores._T;
 
     percentages.E =
       eTotal > 0 ? Number(((scores.E / eTotal) * 100).toFixed(2)) : 50;
@@ -120,6 +133,11 @@ export class MbtiCalculator {
     percentages.P =
       jTotal > 0 ? Number(((scores.P / jTotal) * 100).toFixed(2)) : 50;
 
+    percentages._A =
+      aTotal > 0 ? Number(((scores._A / aTotal) * 100).toFixed(2)) : 50;
+    percentages._T =
+      aTotal > 0 ? Number(((scores._T / aTotal) * 100).toFixed(2)) : 50;
+
     return percentages;
   }
 
@@ -128,8 +146,8 @@ export class MbtiCalculator {
     const second = percentages.S >= percentages.N ? 'S' : 'N';
     const third = percentages.T >= percentages.F ? 'T' : 'F';
     const fourth = percentages.J >= percentages.P ? 'J' : 'P';
-
-    const mbtiString = `${first}${second}${third}${fourth}` as MbtiType;
+    const fifth = percentages._A >= percentages._T ? '_A' : '_T';
+    const mbtiString = `${first}${second}${third}${fourth}${fifth}` as MbtiType;
     return mbtiString;
   }
 }

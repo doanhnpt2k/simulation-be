@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
-import { UserRole, UserStatus } from './user.type';
+import { UserRole, UserStatus } from '../user.type';
 
 @Entity('user')
 export class UserEntity {

@@ -3,20 +3,25 @@ import {
   BadRequestException,
   NotFoundException,
   Logger,
+  HttpStatus,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Between, In, Like, Repository } from 'typeorm';
 import { QuestionEntity } from './entities/question.entity';
 import { MbtiTestEntity } from './entities/mbti-test.entity';
 import { MbtiAnswerEntity } from './entities/mbti-answer.entity';
 import { MbtiResultEntity } from './entities/mbti-result.entity';
-import { UserEntity } from '../user/user.entity';
+import { UserEntity } from '../user/entitys/user.entity';
 import { TestStatus } from '@/utils/enum/mbti-category.enum';
 import { MbtiCalculator } from '../../utils/mbti-calculator.util';
 import { CompleteTestResponseDto } from './dto/complete-test.dto';
 import { MbtiResultDto } from './dto/mbti-result.dto';
 import { SubmitTestDto } from './dto/submit-test.dto';
-import { GetQuestionsDto } from './dto/get-questions.dto';
+import {
+  CreateQuestionDto,
+  GetQuestionsDto,
+  UpdateQuestionDto,
+} from './dto/questions.dto';
 import { MbtiTypeEntity } from './entities/mbti-type.entity';
 import { MbtiS3Service } from './mbti-s3.service';
 import {
@@ -24,6 +29,12 @@ import {
   QuestionDto,
   PaginationMetaDto,
 } from './dto/paginated-questions.dto';
+import { ApiException } from '@/utils/exception';
+import { ErrorCode } from '@/utils/enum/error.enum';
+import { MbtiPropertyEntity } from './entities/mbti-property.entity';
+import { BaseQueryDto, OrderDirection } from '@/core/dto/base-query.dto';
+import { CreatePropertyDto, UpdatePropertyDto } from './dto/property.dto';
+import { GetMbtiTypesDto } from './dto/type.dto';
 
 @Injectable()
 export class MbtiService {
@@ -38,6 +49,8 @@ export class MbtiService {
     private readonly answerRepository: Repository<MbtiAnswerEntity>,
     @InjectRepository(MbtiResultEntity)
     private readonly resultRepository: Repository<MbtiResultEntity>,
+    @InjectRepository(MbtiPropertyEntity)
+    private readonly propertyRepository: Repository<MbtiPropertyEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(MbtiTypeEntity)
@@ -46,10 +59,48 @@ export class MbtiService {
   ) {}
 
   // MBTI Type CRUD helpers
+
+  //Get all MBTI types
+  async getMbtiTypes(dto: GetMbtiTypesDto) {
+    try {
+      const { page, limit, search, order, orderBy, startTime, endTime } = dto;
+      const [types, total] = await this.mbtiTypeRepository.findAndCount({
+        where: {
+          name: Like(`%${search}%`),
+          createdAt: Between(startTime ?? new Date(), endTime ?? new Date()),
+        },
+        order: { [orderBy ?? 'createdAt']: order ?? OrderDirection.DESC },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+      const totalPages = Math.ceil(total / limit);
+      const data = types.map((type) => ({
+        id: type.id,
+        name: type.name,
+        description: type.description,
+        imageUrl: type.imageUrl,
+        createdAt: type.createdAt,
+        updatedAt: type.updatedAt,
+      }));
+      return { data, page, limit, total, totalPages };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to get MBTI types: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+
+  //Get one MBTI type
+
   async getOneMbtiType(id: string) {
     try {
       const existing = await this.mbtiTypeRepository.findOne({ where: { id } });
-      if (!existing) throw new NotFoundException('MBTI type not found');
+      if (!existing)
+        throw new ApiException(
+          'MBTI type not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
       return existing;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -68,7 +119,11 @@ export class MbtiService {
         where: { name: payload.name },
       });
       if (existing)
-        throw new BadRequestException('MBTI type name already exists');
+        throw new ApiException(
+          'MBTI type name already exists',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
       const entity = this.mbtiTypeRepository.create(payload);
       return await this.mbtiTypeRepository.save(entity);
     } catch (error) {
@@ -90,7 +145,12 @@ export class MbtiService {
   ) {
     try {
       const found = await this.getOneMbtiType(id);
-      if (!found) throw new NotFoundException('MBTI type not found');
+      if (!found)
+        throw new ApiException(
+          'MBTI type not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
 
       // If file provided, upload to S3 and set imageUrl
       if (file) {
@@ -122,6 +182,23 @@ export class MbtiService {
     }
   }
 
+  async deleteMbtiType(id: string) {
+    try {
+      const found = await this.getOneMbtiType(id);
+      if (!found)
+        throw new ApiException(
+          'MBTI type not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
+      await this.mbtiTypeRepository.delete(id);
+      return { message: 'MBTI type deleted successfully' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to delete MBTI type ${id}: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
   //Update MBTI type
   // PUT = replace semantics: name is required. Fields not provided will be set to null if optional
   async putMbtiType(
@@ -133,7 +210,12 @@ export class MbtiService {
     },
   ) {
     const found = await this.mbtiTypeRepository.findOne({ where: { id } });
-    if (!found) throw new NotFoundException('MBTI type not found');
+    if (!found)
+      throw new ApiException(
+        'MBTI type not found',
+        HttpStatus.BAD_REQUEST,
+        ErrorCode.INVALID_INPUT,
+      );
     const next = {
       name: payload.name,
       description: payload.description ?? null,
@@ -166,16 +248,12 @@ export class MbtiService {
 
       // Tính toán pagination meta
       const totalPages = Math.ceil(total / limit);
-      const hasNext = page < totalPages;
-      const hasPrev = page > 1;
 
       const meta: PaginationMetaDto = {
         page,
         limit,
         total,
         totalPages,
-        hasNext,
-        hasPrev,
       };
 
       const data: QuestionDto[] = questions.map((question) => ({
@@ -195,7 +273,77 @@ export class MbtiService {
       throw new BadRequestException(message);
     }
   }
+  async getQuestionById(id: string) {
+    try {
+      const question = await this.questionRepository.findOne({ where: { id } });
+      if (!question)
+        throw new ApiException(
+          'Question not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
+      return question;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to get question by id: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
 
+  async createQuestion(createQuestionDto: CreateQuestionDto) {
+    try {
+      const questionData = this.questionRepository.create(createQuestionDto);
+      return this.questionRepository.save(questionData);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to create question: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+
+  async updateQuestion(id: string, updateQuestionDto: UpdateQuestionDto) {
+    try {
+      const existing = await this.questionRepository.findOne({ where: { id } });
+      if (!existing)
+        throw new ApiException(
+          'Question not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
+      const safePayload: Partial<QuestionEntity> = {};
+      if (updateQuestionDto.content !== undefined)
+        safePayload.content = updateQuestionDto.content;
+      if (updateQuestionDto.category !== undefined)
+        safePayload.category = updateQuestionDto.category;
+      if (updateQuestionDto.order !== undefined)
+        safePayload.order = updateQuestionDto.order;
+      if (updateQuestionDto.isActive !== undefined)
+        safePayload.isActive = updateQuestionDto.isActive;
+      await this.questionRepository.update(id, safePayload);
+      return this.questionRepository.findOne({ where: { id } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to update question: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+  async deleteQuestion(id: string) {
+    try {
+      const existing = await this.questionRepository.findOne({ where: { id } });
+      if (!existing)
+        throw new ApiException(
+          'Question not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
+      await this.questionRepository.delete(id);
+      return { message: 'Question deleted successfully' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to delete question: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
   async getUserResults(userId: string): Promise<MbtiResultDto[]> {
     try {
       const results = await this.resultRepository.find({
@@ -215,6 +363,8 @@ export class MbtiService {
           F: result.fScore,
           J: result.jScore,
           P: result.pScore,
+          _A: result._aScore,
+          _T: result._tScore,
         },
         percentages: {
           E: result.ePercentage,
@@ -225,6 +375,8 @@ export class MbtiService {
           F: result.fPercentage,
           J: result.jPercentage,
           P: result.pPercentage,
+          _A: result._aPercentage,
+          _T: result._tPercentage,
         },
         createdAt: result.createdAt,
       }));
@@ -260,6 +412,8 @@ export class MbtiService {
           F: result.fScore,
           J: result.jScore,
           P: result.pScore,
+          _A: result._aScore,
+          _T: result._tScore,
         },
         percentages: {
           E: result.ePercentage,
@@ -270,6 +424,8 @@ export class MbtiService {
           F: result.fPercentage,
           J: result.jPercentage,
           P: result.pPercentage,
+          _A: result._aPercentage,
+          _T: result._tPercentage,
         },
         createdAt: result.createdAt,
       };
@@ -403,6 +559,8 @@ export class MbtiService {
           F: savedResult.fScore,
           J: savedResult.jScore,
           P: savedResult.pScore,
+          _A: savedResult._aScore,
+          _T: savedResult._tScore,
         },
         percentages: {
           E: savedResult.ePercentage,
@@ -413,6 +571,8 @@ export class MbtiService {
           F: savedResult.fPercentage,
           J: savedResult.jPercentage,
           P: savedResult.pPercentage,
+          _A: savedResult._aPercentage,
+          _T: savedResult._tPercentage,
         },
         createdAt: savedResult.createdAt,
       };
@@ -427,6 +587,124 @@ export class MbtiService {
       if (error instanceof BadRequestException) {
         throw error;
       }
+      throw new BadRequestException(message);
+    }
+  }
+  async getProperties(dto: BaseQueryDto) {
+    try {
+      const { page, limit, search, order, orderBy, startTime, endTime } = dto;
+      const [properties, total] = await this.propertyRepository.findAndCount({
+        where: {
+          title: Like(`%${search}%`),
+          createdAt: Between(startTime ?? new Date(), endTime ?? new Date()),
+        },
+        order: { [orderBy ?? 'createdAt']: order ?? OrderDirection.DESC },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+      const totalPages = Math.ceil(total / limit);
+      const data = properties.map((property) => ({
+        id: property.id,
+        title: property.title,
+        content: property.content,
+        descriptionType: property.descriptionType,
+        swotType: property.swotType,
+        createdAt: property.createdAt,
+        updatedAt: property.updatedAt,
+      }));
+      return { data, total, totalPages, page, limit };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to get properties: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+  async getPropertyById(id: string) {
+    try {
+      const property = await this.propertyRepository.findOne({ where: { id } });
+      if (!property)
+        throw new ApiException(
+          'Property not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
+      return {
+        id: property.id,
+        title: property.title,
+        content: property.content,
+        descriptionType: property.descriptionType,
+        swotType: property.swotType,
+        createdAt: property.createdAt,
+        updatedAt: property.updatedAt,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to get property by id: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+  async createProperty(createPropertyDto: CreatePropertyDto) {
+    try {
+      const payload = this.propertyRepository.create(createPropertyDto);
+      return this.propertyRepository.save(payload);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to update property: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+  async updateProperty(id: string, updatePropertyDto: UpdatePropertyDto) {
+    try {
+      const existing = await this.propertyRepository.findOne({ where: { id } });
+      if (!existing)
+        throw new ApiException(
+          'Property not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
+      const safePayload: Partial<MbtiPropertyEntity> = {};
+      if (updatePropertyDto.title) safePayload.title = updatePropertyDto.title;
+      if (updatePropertyDto.content)
+        safePayload.content = updatePropertyDto.content;
+      if (updatePropertyDto.descriptionType)
+        safePayload.descriptionType = updatePropertyDto.descriptionType;
+      if (updatePropertyDto.swotType)
+        safePayload.swotType = updatePropertyDto.swotType;
+      if (updatePropertyDto.mbtiTypeId) {
+        const type = await this.mbtiTypeRepository.findOne({
+          where: { id: updatePropertyDto.mbtiTypeId },
+        });
+        if (!type)
+          throw new ApiException(
+            'MBTI type not found',
+            HttpStatus.BAD_REQUEST,
+            ErrorCode.INVALID_INPUT,
+          );
+        safePayload.mbtiTypes = [type];
+      }
+      await this.propertyRepository.update(id, safePayload);
+      return this.propertyRepository.findOne({ where: { id } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to update property: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+
+  async deleteProperty(id: string) {
+    try {
+      const existing = await this.propertyRepository.findOne({ where: { id } });
+      if (!existing)
+        throw new ApiException(
+          'Property not found',
+          HttpStatus.BAD_REQUEST,
+          ErrorCode.INVALID_INPUT,
+        );
+      await this.propertyRepository.delete(id);
+      return { message: 'Property deleted successfully' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to delete property: ${message}`);
       throw new BadRequestException(message);
     }
   }

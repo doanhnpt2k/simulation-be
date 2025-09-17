@@ -8,7 +8,7 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
-import { UserEntity } from '../../user/user.entity';
+import { UserEntity } from '../../user/entitys/user.entity';
 import { TestStatus } from '@/utils/enum/mbti-category.enum';
 import { MbtiAnswerEntity } from './mbti-answer.entity';
 

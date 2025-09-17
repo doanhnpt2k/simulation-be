@@ -6,27 +6,29 @@ import {
   Body,
   UploadedFile,
   UseInterceptors,
+  Query,
+  Post,
+  Delete,
 } from '@nestjs/common';
-import { UpdateMbtiCategoryDto } from './dto/update-mbti-category.dto';
-import { MbtiService } from './mbti.service';
+import { CreateMbtiTypeDto, UpdateMbtiTypeDto } from '../dto/type.dto';
+import { MbtiService } from '../mbti.service';
 import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { AuthAdmin } from '@/utils/decorator/http.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBaseQuery } from '@/utils/decorator/swagger.decorator';
+import { GetMbtiTypesDto } from '../dto/type.dto';
 
 @ApiTags('MBTI Types')
-@Controller('v1/mbti/types')
-@AuthAdmin()
+@Controller({ version: '1', path: 'mbti/type' })
 @ApiBearerAuth()
 export class MbtiTypeController {
   constructor(private readonly mbtiService: MbtiService) {}
 
   //Get all MBTI types
+  @ApiBaseQuery()
   @Get()
-  async list() {
-    // Tận dụng repository từ service nếu cần mở rộng
-    return this.mbtiService['mbtiTypeRepository'].find({
-      order: { name: 'ASC' },
-    });
+  async list(@Query() dto: GetMbtiTypesDto) {
+    return this.mbtiService.getMbtiTypes(dto);
   }
   @Get(':id')
   async getOne(@Param('id') id: string) {
@@ -39,6 +41,7 @@ export class MbtiTypeController {
   // }
 
   //Update MBTI type
+  @AuthAdmin()
   @Patch(':id')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
@@ -54,12 +57,25 @@ export class MbtiTypeController {
       },
     },
   })
+  @AuthAdmin()
   async update(
     @Param('id') id: string,
-    @Body() dto: UpdateMbtiCategoryDto,
+    @Body() dto: UpdateMbtiTypeDto,
     @UploadedFile()
     file?: { buffer: Buffer; originalname: string; mimetype: string },
   ) {
     return this.mbtiService.updateMbtiType(id, dto, file);
+  }
+
+  @AuthAdmin()
+  @Post()
+  async create(@Body() dto: CreateMbtiTypeDto) {
+    return this.mbtiService.createMbtiType(dto);
+  }
+
+  @AuthAdmin()
+  @Delete(':id')
+  async delete(@Param('id') id: string) {
+    return this.mbtiService.deleteMbtiType(id);
   }
 }

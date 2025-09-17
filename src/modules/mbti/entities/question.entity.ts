@@ -21,7 +21,7 @@ export class QuestionEntity {
   })
   category: MbtiCategory;
 
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: 'boolean', default: true, name: 'is_active' })
   isActive: boolean;
 
   @Column({ type: 'int', default: 0 })

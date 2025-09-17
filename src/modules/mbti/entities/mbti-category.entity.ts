@@ -14,10 +14,10 @@ export class MbtiCategoryEntity {
   @Column({ type: 'varchar', length: 100, unique: true })
   name: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'description' })
   description?: string | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'image_url' })
   imageUrl?: string | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })

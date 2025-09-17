@@ -4,7 +4,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import postgresConfig, { PostgresConfig } from './config/postgres.config';
 import jwtConfig from './config/jwt.config';
-import { UserEntity } from './modules/user/user.entity';
+import emailConfig from './config/email.config';
+import awsConfig from './config/aws.config';
+import { UserEntity } from './modules/user/entitys/user.entity';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { MbtiModule } from './modules/mbti/mbti.module';
@@ -14,8 +16,9 @@ import { MbtiAnswerEntity } from './modules/mbti/entities/mbti-answer.entity';
 import { MbtiResultEntity } from './modules/mbti/entities/mbti-result.entity';
 import { ResponseInterceptor } from './utils/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './utils/filters/http-exception.filter';
-
-const apiModule = [UserModule, AuthModule, MbtiModule];
+import { BullModule } from '@nestjs/bullmq';
+import redisConfig, { RedisConfig } from './config/redis.config';
+const apiModule = [AuthModule, UserModule, MbtiModule];
 const entities = [
   UserEntity,
   QuestionEntity,
@@ -27,8 +30,25 @@ const entities = [
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [postgresConfig, jwtConfig],
+      load: [postgresConfig, jwtConfig, emailConfig, awsConfig, redisConfig],
     }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => {
+        const redisConfig = configService.get<RedisConfig>('redis')!;
+        //   const redisUrl = `${redisConfig.url}${redisConfig.username}:${redisConfig.password}@${redisConfig.host}:${redisConfig.port}`;
+        return {
+          connection: {
+            host: redisConfig.host,
+            port: redisConfig.port,
+            password: redisConfig.password,
+            username: redisConfig.username,
+          },
+        };
+      },
+      inject: [ConfigService],
+    }),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {

@@ -11,7 +11,7 @@ export class MbtiResultDto {
   @ApiProperty({
     description: 'MBTI type',
     enum: MbtiType,
-    example: MbtiType.ENTJ,
+    example: MbtiType.ENTJ_A,
   })
   mbtiType: MbtiType;
 
@@ -38,6 +38,8 @@ export class MbtiResultDto {
     F: number;
     J: number;
     P: number;
+    _A: number;
+    _T: number;
   };
 
   @ApiProperty({
@@ -63,6 +65,8 @@ export class MbtiResultDto {
     F: number;
     J: number;
     P: number;
+    _A: number;
+    _T: number;
   };
 
   @ApiProperty({

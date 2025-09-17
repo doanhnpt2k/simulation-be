@@ -7,6 +7,8 @@ import {
   UseGuards,
   Request,
   Query,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,37 +17,100 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { MbtiService } from './mbti.service';
-import { JwtAuthGuard } from '../../utils/guards/jwt.guard';
-import { CompleteTestResponseDto } from './dto/complete-test.dto';
-import { MbtiResultDto } from './dto/mbti-result.dto';
-import { SubmitTestDto } from './dto/submit-test.dto';
-import { GetQuestionsDto } from './dto/get-questions.dto';
-import { PaginatedQuestionsDto } from './dto/paginated-questions.dto';
-import type { AuthenticatedRequest } from '../user/interfaces/authenticated-request.interface';
+import { MbtiService } from '../mbti.service';
+import { CompleteTestResponseDto } from '../dto/complete-test.dto';
+import { MbtiResultDto } from '../dto/mbti-result.dto';
+import { SubmitTestDto } from '../dto/submit-test.dto';
+import {
+  CreateQuestionDto,
+  GetQuestionsDto,
+  UpdateQuestionDto,
+} from '../dto/questions.dto';
+import type { AuthenticatedRequest } from '../../user/interfaces/authenticated-request.interface';
 import { AuthAdmin } from '@/utils/decorator/http.decorator';
+import { JwtAuthGuard } from '@/utils/guards';
+import { ApiBaseQuery } from '@/utils/decorator/swagger.decorator';
 
-@Controller('/v1/mbti')
-@ApiTags('MBTI')
+@Controller({ version: '1', path: 'mbti' })
+@ApiTags('MBTI Q&A')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class MbtiController {
   constructor(private readonly mbtiService: MbtiService) {}
 
   //Get all questions MBTI
-  @Get('questions')
+  @AuthAdmin()
   @ApiOperation({ summary: 'Get alls MBTI questions' })
-  @ApiResponse({
-    status: 200,
-    description: 'Success',
-    type: PaginatedQuestionsDto,
-  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBaseQuery()
+  @Get('question')
   async getQuestions(@Query() getQuestionsDto: GetQuestionsDto) {
     return this.mbtiService.getQuestions(getQuestionsDto);
   }
+  //Get question by id
+  @Get('question/:id')
+  @ApiOperation({ summary: 'Get MBTI question by id' })
+  @ApiParam({
+    name: 'id',
+    description: 'ID of MBTI question',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'MBTI question detail',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'MBTI question not found' })
+  async getQuestionById(@Param('id') id: string) {
+    return this.mbtiService.getQuestionById(id);
+  }
+
+  //Create a question
+
+  @AuthAdmin()
+  @ApiOperation({ summary: 'Create MBTI question' })
+  @ApiResponse({
+    status: 201,
+    description: 'MBTI question created successfully',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Post('question')
+  createQuestion(@Body() createQuestionDto: CreateQuestionDto) {
+    return this.mbtiService.createQuestion(createQuestionDto);
+  }
+
+  //Update a question
+
+  @AuthAdmin()
+  @ApiOperation({ summary: 'Update MBTI question' })
+  @ApiResponse({
+    status: 200,
+    description: 'MBTI question updated successfully',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Patch('question/:id')
+  updateQuestion(
+    @Param('id') id: string,
+    @Body() updateQuestionDto: UpdateQuestionDto,
+  ) {
+    return this.mbtiService.updateQuestion(id, updateQuestionDto);
+  }
+
+  //Delete a question
+
+  @AuthAdmin()
+  @ApiOperation({ summary: 'Delete MBTI question' })
+  @ApiResponse({
+    status: 200,
+    description: 'MBTI question deleted successfully',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @Delete('question/:id')
+  deleteQuestion(@Param('id') id: string) {
+    return this.mbtiService.deleteQuestion(id);
+  }
 
   //Submit MBTI test
+
   @Post('test')
   @ApiOperation({
     summary: 'Submit MBTI test',
@@ -68,7 +133,7 @@ export class MbtiController {
   }
 
   //Get all MBTI results of user (Admin Only)
-  @Get('results')
+
   @AuthAdmin()
   @ApiOperation({ summary: 'Get all MBTI results of user (Admin Only)' })
   @ApiResponse({
@@ -77,6 +142,8 @@ export class MbtiController {
     type: [MbtiResultDto],
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiBaseQuery()
+  @Get('results')
   async getUserResults(@Request() req: AuthenticatedRequest) {
     return this.mbtiService.getUserResults(req.user.userId);
   }
@@ -100,7 +167,6 @@ export class MbtiController {
   @ApiParam({
     name: 'resultId',
     description: 'ID of MBTI result',
-    example: '123e4567-e89b-12d3-a456-4266224aaa20',
   })
   @ApiResponse({
     status: 200,
