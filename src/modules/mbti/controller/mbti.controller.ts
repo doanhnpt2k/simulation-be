@@ -6,9 +6,6 @@ import {
   Param,
   UseGuards,
   Request,
-  Query,
-  Patch,
-  Delete,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,11 +18,6 @@ import { MbtiService } from '../mbti.service';
 import { CompleteTestResponseDto } from '../dto/complete-test.dto';
 import { MbtiResultDto } from '../dto/mbti-result.dto';
 import { SubmitTestDto } from '../dto/submit-test.dto';
-import {
-  CreateQuestionDto,
-  GetQuestionsDto,
-  UpdateQuestionDto,
-} from '../dto/questions.dto';
 import type { AuthenticatedRequest } from '../../user/interfaces/authenticated-request.interface';
 import { AuthAdmin } from '@/utils/decorator/http.decorator';
 import { JwtAuthGuard } from '@/utils/guards';
@@ -37,77 +29,6 @@ import { ApiBaseQuery } from '@/utils/decorator/swagger.decorator';
 @ApiBearerAuth()
 export class MbtiController {
   constructor(private readonly mbtiService: MbtiService) {}
-
-  //Get all questions MBTI
-  @AuthAdmin()
-  @ApiOperation({ summary: 'Get alls MBTI questions' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiBaseQuery()
-  @Get('question')
-  async getQuestions(@Query() getQuestionsDto: GetQuestionsDto) {
-    return this.mbtiService.getQuestions(getQuestionsDto);
-  }
-  //Get question by id
-  @Get('question/:id')
-  @ApiOperation({ summary: 'Get MBTI question by id' })
-  @ApiParam({
-    name: 'id',
-    description: 'ID of MBTI question',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'MBTI question detail',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 404, description: 'MBTI question not found' })
-  async getQuestionById(@Param('id') id: string) {
-    return this.mbtiService.getQuestionById(id);
-  }
-
-  //Create a question
-
-  @AuthAdmin()
-  @ApiOperation({ summary: 'Create MBTI question' })
-  @ApiResponse({
-    status: 201,
-    description: 'MBTI question created successfully',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @Post('question')
-  createQuestion(@Body() createQuestionDto: CreateQuestionDto) {
-    return this.mbtiService.createQuestion(createQuestionDto);
-  }
-
-  //Update a question
-
-  @AuthAdmin()
-  @ApiOperation({ summary: 'Update MBTI question' })
-  @ApiResponse({
-    status: 200,
-    description: 'MBTI question updated successfully',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @Patch('question/:id')
-  updateQuestion(
-    @Param('id') id: string,
-    @Body() updateQuestionDto: UpdateQuestionDto,
-  ) {
-    return this.mbtiService.updateQuestion(id, updateQuestionDto);
-  }
-
-  //Delete a question
-
-  @AuthAdmin()
-  @ApiOperation({ summary: 'Delete MBTI question' })
-  @ApiResponse({
-    status: 200,
-    description: 'MBTI question deleted successfully',
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @Delete('question/:id')
-  deleteQuestion(@Param('id') id: string) {
-    return this.mbtiService.deleteQuestion(id);
-  }
 
   //Submit MBTI test
 

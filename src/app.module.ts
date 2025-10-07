@@ -6,25 +6,22 @@ import postgresConfig, { PostgresConfig } from './config/postgres.config';
 import jwtConfig from './config/jwt.config';
 import emailConfig from './config/email.config';
 import awsConfig from './config/aws.config';
-import { UserEntity } from './modules/user/entitys/user.entity';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { MbtiModule } from './modules/mbti/mbti.module';
-import { QuestionEntity } from './modules/mbti/entities/question.entity';
-import { MbtiTestEntity } from './modules/mbti/entities/mbti-test.entity';
-import { MbtiAnswerEntity } from './modules/mbti/entities/mbti-answer.entity';
-import { MbtiResultEntity } from './modules/mbti/entities/mbti-result.entity';
 import { ResponseInterceptor } from './utils/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './utils/filters/http-exception.filter';
 import { BullModule } from '@nestjs/bullmq';
 import redisConfig, { RedisConfig } from './config/redis.config';
-const apiModule = [AuthModule, UserModule, MbtiModule];
-const entities = [
-  UserEntity,
-  QuestionEntity,
-  MbtiTestEntity,
-  MbtiAnswerEntity,
-  MbtiResultEntity,
+import { SuitabilityModule } from './modules/suitability/suitability.module';
+import { QuestionModule } from './modules/question/question.module';
+
+const apiModule = [
+  AuthModule,
+  UserModule,
+  MbtiModule,
+  SuitabilityModule,
+  QuestionModule,
 ];
 @Module({
   imports: [
@@ -61,8 +58,8 @@ const entities = [
           password: postgresConfig.password,
           database: postgresConfig.database,
           autoLoadEntities: true,
-          entities,
           synchronize: true,
+          migrations: [__dirname + '/migrations/*.ts'],
           logging: ['error', 'warn'],
         };
       },

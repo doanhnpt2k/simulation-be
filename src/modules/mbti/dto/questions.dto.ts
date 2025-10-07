@@ -1,4 +1,11 @@
-import { IsOptional, IsInt, IsString, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsInt,
+  IsString,
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+} from 'class-validator';
 import { MbtiCategory } from '@/utils/enum/mbti-category.enum';
 import { BaseQueryDto } from '@/core/dto/base-query.dto';
 
@@ -6,9 +13,11 @@ export class GetQuestionsDto extends BaseQueryDto {}
 
 export class CreateQuestionDto {
   @IsString()
+  @IsNotEmpty()
   content: string;
 
-  @IsString()
+  @IsEnum(MbtiCategory)
+  @IsNotEmpty()
   category: MbtiCategory;
 
   @IsInt()
@@ -24,7 +33,7 @@ export class UpdateQuestionDto {
   content: string;
 
   @IsOptional()
-  @IsString()
+  @IsEnum(MbtiCategory)
   category: MbtiCategory;
 
   @IsOptional()

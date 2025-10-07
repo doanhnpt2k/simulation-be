@@ -3,7 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { JobEntity } from './job.entity';
 import { Between, In, Like, Repository } from 'typeorm';
 import { Logger } from '@nestjs/common';
-import { CreateJobDto, GetJobDto } from './job.dto';
+import {
+  CreateJobDto,
+  GetJobDto,
+  PartialUpdateSuitabilityJobDto,
+} from './job.dto';
 import { OrderDirection } from '@/core/dto/base-query.dto';
 @Injectable()
 export class JobService {
@@ -88,6 +92,37 @@ export class JobService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to create job: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+  async updateJob(id: string, dto: PartialUpdateSuitabilityJobDto) {
+    try {
+      const job = await this.jobRepository.findOne({ where: { id } });
+      if (!job) {
+        throw new BadRequestException('Job not found');
+      }
+      const safePayload = Object.fromEntries(
+        Object.entries(dto).filter(([, value]) => value !== undefined),
+      ) as Partial<JobEntity>;
+      await this.jobRepository.update(id, safePayload);
+      return this.jobRepository.save(job);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to update job: ${message}`);
+      throw new BadRequestException(message);
+    }
+  }
+  async deleteJob(id: string) {
+    try {
+      const job = await this.jobRepository.findOne({ where: { id } });
+      if (!job) {
+        throw new BadRequestException('Job not found');
+      }
+      await this.jobRepository.delete(id);
+      return { message: 'Job deleted successfully' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to delete job: ${message}`);
       throw new BadRequestException(message);
     }
   }

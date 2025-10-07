@@ -1,5 +1,5 @@
 import { MbtiType, MbtiCategory } from '@/utils/enum/mbti-category.enum';
-import { MbtiAnswerEntity } from '@/modules/mbti/entities/mbti-answer.entity';
+import { AnswerEntity } from '@/modules/answer/answer.entity';
 
 export interface MbtiScores {
   E: number;
@@ -34,9 +34,7 @@ export interface MbtiCalculationResult {
 }
 
 export class MbtiCalculator {
-  static calculateMbtiResult(
-    answers: MbtiAnswerEntity[],
-  ): MbtiCalculationResult {
+  static calculateMbtiResult(answers: AnswerEntity[]): MbtiCalculationResult {
     const scores: MbtiScores = {
       E: 0,
       I: 0,
@@ -52,7 +50,7 @@ export class MbtiCalculator {
 
     // Tính điểm cho từng câu trả lời (-3..3)
     answers.forEach((answer) => {
-      const category = answer.question.category;
+      const category = answer.question.mbtiCategory;
       const score = answer.score; // -3..3
 
       switch (category) {
@@ -92,7 +90,7 @@ export class MbtiCalculator {
     };
   }
 
-  private static calculatePercentages(scores: MbtiScores): MbtiPercentages {
+  public static calculatePercentages(scores: MbtiScores): MbtiPercentages {
     const percentages: MbtiPercentages = {
       E: 0,
       I: 0,

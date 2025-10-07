@@ -59,3 +59,7 @@ export enum SWOTType {
   OPPORTUNITY = 'OPPORTUNITY',
   THREAT = 'THREAT',
 }
+export enum QuestionType {
+  MBTI = 'MBTI',
+  SUITABILITY = 'SUITABILITY',
+}

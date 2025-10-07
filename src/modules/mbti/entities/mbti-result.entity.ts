@@ -7,7 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { UserEntity } from '../../user/entitys/user.entity';
-import { MbtiTestEntity } from './mbti-test.entity';
+import { TestEntity } from '../../test/test.entity';
 import { MbtiType } from '@/utils/enum/mbti-category.enum';
 import {
   Column as OrmColumn,
@@ -67,37 +67,6 @@ export class MbtiResultEntity {
   @Column({ type: 'int', name: '_t_score' })
   _tScore: number;
 
-  // Percentages
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'e_percentage' })
-  ePercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'i_percentage' })
-  iPercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 's_percentage' })
-  sPercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'n_percentage' })
-  nPercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 't_percentage' })
-  tPercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'f_percentage' })
-  fPercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'j_percentage' })
-  jPercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: 'p_percentage' })
-  pPercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: '_a_percentage' })
-  _aPercentage: number;
-
-  @Column({ type: 'decimal', precision: 5, scale: 2, name: '_t_percentage' })
-  _tPercentage: number;
-
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 
@@ -105,9 +74,9 @@ export class MbtiResultEntity {
   @JoinColumn({ name: 'user_id' })
   user: UserEntity;
 
-  @ManyToOne(() => MbtiTestEntity, { onDelete: 'CASCADE' })
+  @ManyToOne(() => TestEntity, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'test_id' })
-  test: MbtiTestEntity;
+  test: TestEntity;
 
   @OrmManyToOne(() => MbtiTypeEntity, { onDelete: 'SET NULL' })
   @OrmJoinColumn({ name: 'mbti_type_id' })

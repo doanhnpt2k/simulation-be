@@ -5,9 +5,6 @@ import {
   Inject,
   Logger,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UserEntity } from '../user/entitys/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
@@ -16,21 +13,18 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UserService } from '../user/user.service';
 import { UserStatus } from '../user/user.type';
 import type { JwtPayload } from './interfaces/jwt-payload.interface';
-import { MbtiTypeEntity } from '../mbti/entities/mbti-type.entity';
-import { MbtiResultEntity } from '../mbti/entities/mbti-result.entity';
+import { MbtiService } from '../mbti/mbti.service';
+import { SuitabilityService } from '../suitability/suitability.service';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   constructor(
-    @InjectRepository(UserEntity)
-    private readonly userRepo: Repository<UserEntity>,
-    @InjectRepository(MbtiTypeEntity)
-    private readonly mbtiTypeRepository: Repository<MbtiTypeEntity>,
-    @InjectRepository(MbtiResultEntity)
-    private readonly mbtiResultRepository: Repository<MbtiResultEntity>,
-    @Inject(JwtService) private readonly jwtService: JwtService,
     @Inject(UserService) private readonly userService: UserService,
+    @Inject(JwtService) private readonly jwtService: JwtService,
+    @Inject(MbtiService) private readonly mbtiService: MbtiService,
+    @Inject(SuitabilityService)
+    private readonly suitabilityService: SuitabilityService,
   ) {}
 
   private readonly crypto: {
@@ -43,11 +37,8 @@ export class AuthService {
 
   async register(payload: RegisterDto) {
     try {
-      const existing = await this.userRepo.findOne({
-        where: { email: payload.email },
-      });
+      const existing = await this.userService.findOneByEmail(payload.email);
       if (existing) throw new BadRequestException('Email already exists');
-
       const passwordHash: string = await this.crypto.hash(payload.password, 10);
       await this.userService.createUser({
         name: '',
@@ -64,9 +55,7 @@ export class AuthService {
 
   async login(payload: LoginDto) {
     try {
-      const user = await this.userRepo.findOne({
-        where: { email: payload.email },
-      });
+      const user = await this.userService.findOneByEmail(payload.email);
       if (!user) throw new UnauthorizedException('Invalid credentials: email');
       const ok: boolean = await this.crypto.compare(
         payload.password,
@@ -75,7 +64,7 @@ export class AuthService {
       if (!ok) throw new UnauthorizedException('Invalid credentials: password');
 
       // Cập nhật lastLoginAt
-      await this.userRepo.update(user.id, {
+      await this.userService.updateUser(user.id, {
         lastLoginAt: new Date(),
       });
 
@@ -110,19 +99,16 @@ export class AuthService {
 
   async getMe(userId: string) {
     try {
-      const user = await this.userRepo.findOne({ where: { id: userId } });
+      const user = await this.userService.findOneById(userId);
       if (!user) throw new BadRequestException('User not found');
       const mbtiType = user.mbtiTypeId
-        ? await this.mbtiTypeRepository.findOne({
-            where: { id: user.mbtiTypeId },
-          })
+        ? await this.mbtiService.getOneMbtiType(user.mbtiTypeId)
         : null;
-      const lastResult = await this.mbtiResultRepository.findOne({
-        where: { userId: user.id },
-        order: { createdAt: 'DESC' },
-      });
-      console.log(lastResult);
-
+      const suitabilityType = user.suitabilityTypeId
+        ? await this.suitabilityService.getOneSuitabilityType(
+            user.suitabilityTypeId,
+          )
+        : null;
       return {
         id: user.id,
         email: user.email,
@@ -134,31 +120,8 @@ export class AuthService {
         updatedAt: user.updatedAt,
         lastMbtiTestAt: user.lastMbtiTestAt,
         mbtiType: mbtiType,
-        lastResult: lastResult
-          ? {
-              scores: {
-                E: lastResult.eScore,
-                I: lastResult.iScore,
-                S: lastResult.sScore,
-                N: lastResult.nScore,
-                T: lastResult.tScore,
-                F: lastResult.fScore,
-                J: lastResult.jScore,
-                P: lastResult.pScore,
-              },
-              percentages: {
-                E: lastResult.ePercentage,
-                I: lastResult.iPercentage,
-                S: lastResult.sPercentage,
-                N: lastResult.nPercentage,
-                T: lastResult.tPercentage,
-                F: lastResult.fPercentage,
-                J: lastResult.jPercentage,
-                P: lastResult.pPercentage,
-              },
-              createdAt: lastResult.createdAt,
-            }
-          : null,
+        suitabilityType: suitabilityType,
+        lastSuitabilityTestAt: user.lastSuitabilityTestAt,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -180,9 +143,7 @@ export class AuthService {
       }
 
       // Tìm user
-      const user = await this.userRepo.findOne({
-        where: { id: decoded.sub },
-      });
+      const user = await this.userService.findOneById(decoded.sub);
 
       if (!user) {
         throw new UnauthorizedException('User not found');

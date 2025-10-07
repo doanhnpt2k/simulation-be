@@ -9,7 +9,11 @@ import { Repository } from 'typeorm';
 
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  UpdateUserDto,
+  UpdateUserMbtiDto,
+  UpdateUserSuitabilityDto,
+} from './dto/update-user.dto';
 import { MailService, PayloadMailJob } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
@@ -90,7 +94,82 @@ export class UserService {
       throw new BadRequestException('Failed to update user');
     }
   }
-
+  async findOneByEmail(email: string) {
+    try {
+      const user = await this.userRepository.findOne({ where: { email } });
+      if (!user) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      return user;
+    } catch (error) {
+      this.logger.error(
+        `Failed to find user by email ${email}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw new BadRequestException('Failed to find user by email');
+    }
+  }
+  async updateUserMbti(id: string, updateUserMbtiDto: UpdateUserMbtiDto) {
+    try {
+      const user = await this.userRepository.findOne({ where: { id } });
+      if (!user) {
+        throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      }
+      const updateData: Partial<UserEntity> = {};
+      if (
+        updateUserMbtiDto.mbtiTypeId !== undefined &&
+        updateUserMbtiDto.mbtiTypeId !== user.mbtiTypeId
+      ) {
+        updateData.mbtiTypeId = updateUserMbtiDto.mbtiTypeId;
+      }
+      if (
+        updateUserMbtiDto.lastMbtiTestAt &&
+        updateUserMbtiDto.lastMbtiTestAt !== user.lastMbtiTestAt
+      ) {
+        updateData.lastMbtiTestAt = updateUserMbtiDto.lastMbtiTestAt;
+      }
+      await this.userRepository.update(id, updateData);
+      return 'User updated successfully';
+    } catch (error) {
+      this.logger.error(
+        `Failed to update user ${id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw new BadRequestException('Failed to update user');
+    }
+  }
+  async updateUserSuitability(
+    id: string,
+    updateUserSuitabilityDto: UpdateUserSuitabilityDto,
+  ) {
+    try {
+      const user = await this.userRepository.findOne({ where: { id } });
+      if (!user) {
+        throw new HttpException('User not found', HttpStatus.BAD_REQUEST);
+      }
+      const updateData: Partial<UserEntity> = {};
+      if (
+        updateUserSuitabilityDto.suitabilityTypeId !== undefined &&
+        updateUserSuitabilityDto.suitabilityTypeId !== user.suitabilityTypeId
+      ) {
+        updateData.suitabilityTypeId =
+          updateUserSuitabilityDto.suitabilityTypeId;
+      }
+      if (
+        updateUserSuitabilityDto.lastSuitabilityTestAt &&
+        updateUserSuitabilityDto.lastSuitabilityTestAt !==
+          user.lastSuitabilityTestAt
+      ) {
+        updateData.lastSuitabilityTestAt =
+          updateUserSuitabilityDto.lastSuitabilityTestAt;
+      }
+      await this.userRepository.update(id, updateData);
+      return 'User updated successfully';
+    } catch (error) {
+      this.logger.error(
+        `Failed to update user ${id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw new BadRequestException('Failed to update user');
+    }
+  }
   async requestValidateToken(id: string) {
     try {
       const user = await this.userRepository.findOne({ where: { id } });

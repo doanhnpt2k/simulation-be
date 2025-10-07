@@ -41,7 +41,16 @@ export class UserEntity {
   @Column({ type: 'timestamptz', name: 'last_mbti_test_at', nullable: true })
   lastMbtiTestAt?: Date;
 
-  // Quan hệ tới bảng mbti_types (normalized type)
   @Column({ type: 'uuid', name: 'mbti_type_id', nullable: true })
   mbtiTypeId?: string | null;
+
+  @Column({ type: 'uuid', name: 'suitability_type_id', nullable: true })
+  suitabilityTypeId?: string | null;
+
+  @Column({
+    type: 'timestamptz',
+    name: 'last_suitability_test_at',
+    nullable: true,
+  })
+  lastSuitabilityTestAt?: Date;
 }

@@ -46,8 +46,8 @@ export class MbtiPropertyController {
   //Create a property
   @AuthAdmin()
   @Post()
-  async createProperty(@Body() body: CreatePropertyDto) {
-    return this.mbtiService.createProperty(body);
+  async createProperty(@Body() dto: CreatePropertyDto) {
+    return this.mbtiService.createProperty(dto);
   }
 
   //Update a property

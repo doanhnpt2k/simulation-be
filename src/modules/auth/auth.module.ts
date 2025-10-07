@@ -10,11 +10,15 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategy/jwt.strategy';
 import { MbtiTypeEntity } from '../mbti/entities/mbti-type.entity';
 import { MbtiResultEntity } from '../mbti/entities/mbti-result.entity';
+import { MbtiModule } from '../mbti/mbti.module';
+import { SuitabilityModule } from '../suitability/suitability.module';
 
 @Module({
   imports: [
     ConfigModule,
     UserModule,
+    MbtiModule,
+    SuitabilityModule,
     TypeOrmModule.forFeature([UserEntity, MbtiTypeEntity, MbtiResultEntity]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
